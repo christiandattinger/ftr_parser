@@ -1,5 +1,5 @@
 use std::io::{Cursor, Read};
-use lz4_flex::frame::FrameDecoder;
+use lz4_flex::decompress_into;
 use crate::cbor_decoder::CborDecoder;
 use crate::types::{Attribute, DataType, Event, FTR, Transaction, TxBlock, TxGenerator, TxRelation, TxStream};
 use crate::types::DataType::*;
@@ -33,7 +33,7 @@ impl<'a> FtrParser<'a>{
         Self {ftr}
     }
 
-    pub fn load(&mut self, file: Vec<u8>) {
+    pub fn load(&mut self, file: Vec<u8>){
         let cursor = Cursor::new(file);
         let cbor_decoder = CborDecoder::new(cursor);
         Self::parse_input(self, cbor_decoder);
@@ -60,7 +60,7 @@ impl<'a> FtrParser<'a>{
                         panic!()
                     }
                     //TODO time_scale
-                    let time_scale = cbd.read_int();
+                    let _time_scale = cbd.read_int();
 
                     let epoch_tag = cbd.read_tag();
                     if epoch_tag != 1 {
@@ -74,13 +74,17 @@ impl<'a> FtrParser<'a>{
                 }
 
                 DICTIONARY_CHUNK_COMP => {
-                    let size = cbor_decoder.read_array_length();
-                    if size != 2 {
+                    let len = cbor_decoder.read_array_length();
+                    if len != 2 {
                         panic!()
                     }
-                    cbor_decoder.read_int(); // uncompressed size
-                    let mut cbd = CborDecoder::new(FrameDecoder::new(Cursor::new(cbor_decoder.read_byte_string())));
-                    Self::parse_dict(self, &mut cbd);
+                    let size = cbor_decoder.read_int(); // uncompressed size
+                    let bytes = cbor_decoder.read_byte_string();
+
+                    let mut buf = vec![0u8; size as usize];
+                    decompress_into(bytes.as_slice(), &mut buf).expect("");
+
+                    Self::parse_dict(self, &mut CborDecoder::new(Cursor::new(buf)));
                 }
 
                 DIRECTORY_CHUNK_UNCOMP => {
@@ -95,9 +99,12 @@ impl<'a> FtrParser<'a>{
                     }
 
                     let uncomp_size: usize = cbor_decoder.read_int() as usize;
-                    let mut frame_decoder = FrameDecoder::new(Cursor::new(cbor_decoder.read_byte_string()));
-                    Self::parse_dir_comp(self, &mut frame_decoder, uncomp_size);
-                }
+                    let mut buf = vec![0u8; uncomp_size];
+                    let bytes = cbor_decoder.read_byte_string();
+                    decompress_into(bytes.as_slice(), &mut buf).expect("");
+
+                    Self::parse_dir(self, &mut CborDecoder::new(Cursor::new(buf)));
+                  }
 
                 TX_BLOCK_CHUNK_UNCOMP => {
                     let len = cbor_decoder.read_array_length();
@@ -121,48 +128,48 @@ impl<'a> FtrParser<'a>{
 
                 }
 
-                // TODO
                 TX_BLOCK_CHUNK_COMP => {
-
-                }
-
-                RELATIONSHIP_CHUNK_UNCOMP => {
-                    let mut cbd = CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string()));
-                    let size = cbd.read_array_length();
-                    if size != -1 {
+                    let len = cbor_decoder.read_array_length();
+                    if len != 5 {
                         panic!()
                     }
 
-                    let mut next_rel = cbd.peek();
-                    while next_rel.is_ok() && next_rel.unwrap() != 0xff {
-                        let sz = cbd.read_array_length();
-                        if sz != 5 && sz != 3 {
-                            panic!()
-                        }
-                        let type_id = cbd.read_int();
-                        let from_tx_id = cbd.read_int();
-                        let to_tx_id = cbd.read_int();
-                        let from_stream_id = if sz > 3 {cbd.read_int()} else {-1};
-                        let to_stream_id = if sz > 3 {cbd.read_int()} else {-1};
-                        let rel_name = self.ftr.str_dict.get(&type_id).unwrap();
+                    let stream_id = cbor_decoder.read_int();
+                    let start_time = cbor_decoder.read_int(); // start time of block
+                    let end_time = cbor_decoder.read_int();
+                    let uncomp_size = cbor_decoder.read_int();
 
-                        let tx_relation = TxRelation{
-                            name: rel_name.clone(),
-                            source_tx_id: from_tx_id,
-                            sink_tx_id: to_tx_id,
-                            source_stream_id: from_stream_id,
-                            sink_stream_id: to_stream_id,
-                        };
-                        self.ftr.tx_relations.push(tx_relation);
-                        next_rel = cbd.peek();
-                    }
+                    let mut tx_block = TxBlock{
+                        stream_id,
+                        start_time,
+                        end_time,
+                        transactions: vec![],
+                    };
 
+                    let mut buf = vec![0u8; uncomp_size as usize];
+                    let bytes = cbor_decoder.read_byte_string();
+                    decompress_into(bytes.as_slice(), &mut buf).expect("");
+
+                    Self::parse_tx_block(self, &mut CborDecoder::new(Cursor::new(buf)), &mut tx_block);
+                  }
+
+                RELATIONSHIP_CHUNK_UNCOMP => {
+                    let mut cbd = CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string()));
+                    Self::parse_rel(self, &mut cbd);
                 }
 
-                //TODO
                 RELATIONSHIP_CHUNK_COMP => {
+                    let len = cbor_decoder.read_array_length();
+                    if len != 2 {
+                        panic!()
+                    }
+                    let uncomp_size = cbor_decoder.read_int();
+                    let mut buf = vec![0u8; uncomp_size as usize];
+                    let bytes = cbor_decoder.read_byte_string();
+                    decompress_into(bytes.as_slice(), &mut buf).expect("");
 
-                }
+                    Self::parse_rel(self, &mut CborDecoder::new(Cursor::new(buf)));
+                   }
 
                 _ => {panic!("Should never happen")}
             }
@@ -199,11 +206,6 @@ impl<'a> FtrParser<'a>{
         }
     }
 
-    fn parse_dir_comp<R: Read>(&mut self, frame_decoder: &mut FrameDecoder<R>, size: usize) {
-        let mut buf = vec![0u8; size];
-        frame_decoder.read_exact(&mut buf).expect("");
-        Self::parse_dir(self, &mut CborDecoder::new(Cursor::new(buf)));
-    }
 
     fn parse_dir_entry<R: Read>(&mut self, cbd: &mut CborDecoder<R>) {
         let dir_tag = cbd.read_tag();
@@ -357,6 +359,37 @@ impl<'a> FtrParser<'a>{
 
         }
 
+    }
+
+    fn parse_rel(&mut self, cbd: &mut CborDecoder<Cursor<Vec<u8>>>) {
+        let size = cbd.read_array_length();
+        if size != -1 {
+            panic!()
+        }
+
+        let mut next_rel = cbd.peek();
+        while next_rel.is_ok() && next_rel.unwrap() != 0xff {
+            let sz = cbd.read_array_length();
+            if sz != 5 && sz != 3 {
+                panic!()
+            }
+            let type_id = cbd.read_int();
+            let from_tx_id = cbd.read_int();
+            let to_tx_id = cbd.read_int();
+            let from_stream_id = if sz > 3 {cbd.read_int()} else {-1};
+            let to_stream_id = if sz > 3 {cbd.read_int()} else {-1};
+            let rel_name = self.ftr.str_dict.get(&type_id).unwrap();
+
+            let tx_relation = TxRelation{
+                name: rel_name.clone(),
+                source_tx_id: from_tx_id,
+                sink_tx_id: to_tx_id,
+                source_stream_id: from_stream_id,
+                sink_stream_id: to_stream_id,
+            };
+            self.ftr.tx_relations.push(tx_relation);
+            next_rel = cbd.peek();
+        }
     }
 
 }

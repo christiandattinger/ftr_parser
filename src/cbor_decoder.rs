@@ -74,20 +74,20 @@ impl <R: Read>CborDecoder<R>{
     fn read_unsigned_int_16(&mut self) -> i64 {
         let mut buf = vec![0u8; 2];
         self.input_stream.read_exact(&mut buf).expect("");
-        ((buf[0] as i64) << 8 | (buf[1] as i64))
+        (buf[0] as i64) << 8 | (buf[1] as i64)
     }
 
     fn read_unsigned_int_32(&mut self) -> i64 {
         let mut buf = vec![0u8; 4];
         self.input_stream.read_exact(&mut buf).expect("");
-        ((buf[0] as i64) << 24 | (buf[1] as i64) << 16 | (buf[2] as i64) << 8 | (buf[3] as i64))
+        (buf[0] as i64) << 24 | (buf[1] as i64) << 16 | (buf[2] as i64) << 8 | (buf[3] as i64)
     }
 
     fn read_unsigned_int_64(&mut self) -> i64 {
         let mut buf = vec![0u8; 8];
         self.input_stream.read_exact(&mut buf).expect("");
-        ((buf[0] as i64) << 56 | (buf[1] as i64) << 48 | (buf[2] as i64) << 40 | (buf[3] as i64) << 32 | //
-            (buf[4] as i64) << 24 | (buf[5] as i64) << 16 | (buf[6] as i64) << 8 | (buf[7] as i64))
+        (buf[0] as i64) << 56 | (buf[1] as i64) << 48 | (buf[2] as i64) << 40 | (buf[3] as i64) << 32 | //
+            (buf[4] as i64) << 24 | (buf[5] as i64) << 16 | (buf[6] as i64) << 8 | (buf[7] as i64)
     }
 
 
@@ -109,8 +109,8 @@ impl <R: Read>CborDecoder<R>{
     }
 
     pub fn expect_integer_type(&mut self, ib: u8) -> i64 {
-        let major_type = ((ib & 0xff) >> 5);
-        if ((major_type as u8 != TYPE_UNSIGNED_INT) && (major_type as u8 != TYPE_NEGATIVE_INT)) {
+        let major_type = (ib & 0xff) >> 5;
+        if (major_type as u8 != TYPE_UNSIGNED_INT) && (major_type as u8 != TYPE_NEGATIVE_INT) {
             panic!()
         }else {
             return -(major_type as i64)

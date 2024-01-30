@@ -3,7 +3,7 @@ mod cbor_decoder;
 mod types;
 
 use std::collections::HashMap;
-use std::fs::read;
+use std::fs::{read};
 
 use crate::ftr_parser::FtrParser;
 use crate::types::FTR;
@@ -11,7 +11,12 @@ use crate::types::FTR;
 
 fn main() {
 
-    let file = read("my_db.ftr").expect("");
+    let comp = true;
+    let file = if comp {
+        read("my_db_c.ftr").expect("")
+    }else {
+        read("my_db.ftr").expect("")
+    };
 
     let mut ftr = FTR{
         str_dict: HashMap::new(),
@@ -21,9 +26,6 @@ fn main() {
         tx_relations: vec![],
     };
     let mut ftr_parser = FtrParser::new(&mut ftr);
-
-
-
 
     ftr_parser.load(file);
 

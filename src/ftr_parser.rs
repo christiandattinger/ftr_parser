@@ -1,7 +1,7 @@
 use std::io::{Cursor, Read};
 use lz4_flex::decompress_into;
 use crate::cbor_decoder::CborDecoder;
-use crate::types::{Attribute, AttributeType, DataType, Event, FTR, Transaction, TxBlock, TxGenerator, TxRelation, TxStream};
+use crate::types::{Attribute, AttributeType, DataType, Event, FTR, Timescale, Transaction, TxBlock, TxGenerator, TxRelation, TxStream};
 use crate::types::DataType::*;
 
 const INFO_CHUNK: u64 = 6;
@@ -33,13 +33,14 @@ impl<'a> FtrParser<'a>{
         Self {ftr}
     }
 
-    pub fn load(&mut self, file: Vec<u8>){
-        let cursor = Cursor::new(file);
-        let cbor_decoder = CborDecoder::new(cursor);
+    pub fn load<R: Read>(&mut self, file: R){
+        let cbor_decoder = CborDecoder::new(file);
         Self::parse_input(self, cbor_decoder);
 
     }
-    fn parse_input(&mut self, mut cbor_decoder: CborDecoder<Cursor<Vec<u8>>>) {
+
+    //TODO change to work with buffered readers
+    fn parse_input<R: Read>(&mut self, mut cbor_decoder: CborDecoder<R>) {
         let tag = cbor_decoder.read_tag();
         if tag != 55799 {
             panic!("Not a valid ftr file")
@@ -59,8 +60,9 @@ impl<'a> FtrParser<'a>{
                     if size != 2 {
                         panic!()
                     }
-                    //TODO time_scale
-                    let _time_scale = cbd.read_int();
+
+                    let time_scale = cbd.read_int();
+                    self.ftr.time_scale = Timescale::get_timescale(time_scale);
 
                     let epoch_tag = cbd.read_tag();
                     if epoch_tag != 1 {
@@ -190,7 +192,7 @@ impl<'a> FtrParser<'a>{
 
     }
 
-    fn parse_dir(&mut self, cbd: &mut CborDecoder<Cursor<Vec<u8>>>){
+    fn parse_dir<R: Read>(&mut self, cbd: &mut CborDecoder<R>){
         let size = cbd.read_array_length();
         if size < 0 {
             let mut next_dir = cbd.peek();
@@ -243,7 +245,7 @@ impl<'a> FtrParser<'a>{
         }
     }
 
-    fn parse_tx_block(&mut self, cbd: &mut CborDecoder<Cursor<Vec<u8>>>, tx_block: &mut TxBlock) {
+    fn parse_tx_block<R: Read>(&mut self, cbd: &mut CborDecoder<R>, tx_block: &mut TxBlock) {
         let size = cbd.read_array_length();
         if size != -1 {
             panic!()
@@ -361,7 +363,7 @@ impl<'a> FtrParser<'a>{
 
     }
 
-    fn parse_rel(&mut self, cbd: &mut CborDecoder<Cursor<Vec<u8>>>) {
+    fn parse_rel<R: Read>(&mut self, cbd: &mut CborDecoder<R>) {
         let size = cbd.read_array_length();
         if size != -1 {
             panic!()

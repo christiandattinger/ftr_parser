@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use crate::types::DataType::NONE;
+use crate::types::Timescale::{Fs, Ms, Ns, Ps, S, Unit, Us};
 
 #[derive(Debug)]
 pub struct TxStream {
@@ -122,9 +123,35 @@ pub enum AttributeType {
 }
 
 pub struct FTR {
+    pub time_scale: Timescale,
     pub str_dict: HashMap<i64, String>,
     pub tx_streams: Vec<TxStream>,
     pub tx_generators: Vec<TxGenerator>,
     pub tx_blocks: Vec<TxBlock>,
     pub tx_relations: Vec<TxRelation>,
+}
+
+#[derive(Debug)]
+pub enum Timescale {
+    Fs,
+    Ps,
+    Ns,
+    Us,
+    Ms,
+    S,
+    Unit,
+}
+
+impl Timescale {
+    pub fn get_timescale(exponent: i64) -> Timescale{
+        match exponent {
+            0 => S,
+            -4 => Ms,
+            -8 => Us,
+            -12 => Ns,
+            -16 => Ps,
+            -20 => Fs,
+            _ => Unit,
+        }
+    }
 }

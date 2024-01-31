@@ -1,4 +1,4 @@
-use std::io::{Cursor, Error, Read};
+use std::io::{Error, Read};
 
 const ONE_BYTE: u8 = 24;
 const TWO_BYTES: u8 = 25;
@@ -16,11 +16,14 @@ const TYPE_TAG: u8 = 0x06;
 
 pub struct CborDecoder<R>{
     input_stream: R,
+    peek_buf: Vec<u8>,
 }
 
 impl <R: Read>CborDecoder<R>{
     pub fn new(input_stream: R) -> Self {
-        Self {input_stream}
+        let mut peek_buf = vec![0u8; 1];
+        peek_buf.clear();
+        Self {input_stream, peek_buf}
     }
 
     pub fn read_tag(&mut self) -> i64 {
@@ -31,7 +34,13 @@ impl <R: Read>CborDecoder<R>{
 
     pub fn read_major_type(&mut self, major_type: u8) -> Result<u8, Error> {
         let mut buf = vec![0u8; 1];
-        self.input_stream.read_exact(&mut buf)?;
+        if !self.peek_buf.is_empty() {
+            buf[0] = self.peek_buf[0];
+            self.peek_buf.clear();
+        } else {
+            self.input_stream.read_exact(&mut buf)?
+        };
+
         if major_type != ((buf[0] >> 5) & 0x07) {
             panic!()
         }
@@ -133,16 +142,13 @@ impl <R: Read>CborDecoder<R>{
         self.input_stream.read_exact(&mut buf).expect("");
         String::from_utf8(buf).expect("")
     }
-}
 
-impl CborDecoder<Cursor<Vec<u8>>> {
-    pub fn peek(&mut self) -> Result<i64, Error> {
-        let mut buf = vec![0u8; 1];
-
-        if let Err(err) = self.input_stream.read_exact(&mut buf){
+    pub fn peek(&mut self)  -> Result<i64, Error>{
+        self.peek_buf = vec![0u8; 1];
+        if let Err(err) = self.input_stream.read_exact(&mut self.peek_buf) {
             return Err(err)
         }
-        self.input_stream.set_position(self.input_stream.position() - 1);
-        Ok(buf[0] as i64)
+        Ok(self.peek_buf[0] as i64)
     }
 }
+

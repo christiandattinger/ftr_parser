@@ -1,33 +1,23 @@
 mod ftr_parser;
 mod cbor_decoder;
 mod types;
+mod parse;
 
-use std::collections::HashMap;
-use std::fs::{read};
-
-use crate::ftr_parser::FtrParser;
-use crate::types::FTR;
-
+use std::fs::File;
+use crate::parse::parse_ftr;
 
 fn main() {
 
-    let comp = false;
+    let comp = true;
     let file = if comp {
-        read("my_db_c.ftr").expect("")
+        File::open("my_db_c.ftr").unwrap()
     }else {
-        read("my_db.ftr").expect("")
+        File::open("my_db.ftr").unwrap()
     };
 
-    let mut ftr = FTR{
-        str_dict: HashMap::new(),
-        tx_streams: vec![],
-        tx_generators: vec![],
-        tx_blocks: vec![],
-        tx_relations: vec![],
-    };
-    let mut ftr_parser = FtrParser::new(&mut ftr);
+    let ftr = parse_ftr(file).unwrap();
 
-    ftr_parser.load(file);
+    println!("Timescale: {:?}", ftr.time_scale);
 
     println!("Dictionary: ");
     for entry in &ftr.str_dict {

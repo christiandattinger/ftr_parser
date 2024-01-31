@@ -11,7 +11,7 @@ use crate::types::FTR;
 
 fn main() {
 
-    let comp = true;
+    let comp = false;
     let file = if comp {
         read("my_db_c.ftr").expect("")
     }else {

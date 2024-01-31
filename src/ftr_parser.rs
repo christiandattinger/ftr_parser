@@ -1,7 +1,7 @@
 use std::io::{Cursor, Read};
 use lz4_flex::decompress_into;
 use crate::cbor_decoder::CborDecoder;
-use crate::types::{Attribute, DataType, Event, FTR, Transaction, TxBlock, TxGenerator, TxRelation, TxStream};
+use crate::types::{Attribute, AttributeType, DataType, Event, FTR, Transaction, TxBlock, TxGenerator, TxRelation, TxStream};
 use crate::types::DataType::*;
 
 const INFO_CHUNK: u64 = 6;
@@ -17,10 +17,10 @@ const RELATIONSHIP_CHUNK_COMP: u64 = 15;
 const STREAM: u64 = 16;
 const GENERATOR: u64 = 17;
 
-const EVENT: u64 = 6;
-const BEGIN: u64 = 7;
-const RECORD: u64 = 8;
-const END: u64 = 9;
+const EVENT_TAG: u64 = 6;
+const BEGIN_TAG: u64 = 7;
+const RECORD_TAG: u64 = 8;
+const END_TAG: u64 = 9;
 
 pub struct FtrParser<'a> {
     ftr: &'a mut FTR,
@@ -151,7 +151,8 @@ impl<'a> FtrParser<'a>{
                     decompress_into(bytes.as_slice(), &mut buf).expect("");
 
                     Self::parse_tx_block(self, &mut CborDecoder::new(Cursor::new(buf)), &mut tx_block);
-                  }
+                    self.ftr.tx_blocks.push(tx_block);
+                }
 
                 RELATIONSHIP_CHUNK_UNCOMP => {
                     let mut cbd = CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string()));
@@ -256,15 +257,13 @@ impl<'a> FtrParser<'a>{
 
 
             let mut event = Event::new();
-            let mut begin = Attribute::new();
-            let mut record = Attribute::new();
-            let mut end = Attribute::new();
+            let mut attributes = vec![Attribute::new(); 0];
 
             for _i in 0..arr_len {
                 let tag = cbd.read_tag();
 
                 match tag  as u64{
-                    EVENT => {
+                    EVENT_TAG => {
                         let event_len = cbd.read_array_length();
                         if event_len != 4 {
                             panic!()
@@ -281,7 +280,7 @@ impl<'a> FtrParser<'a>{
                         };
                         event = new_event;
                     }
-                    BEGIN => {
+                    BEGIN_TAG => {
                         let len = cbd.read_array_length();
                         if len != 3 {
                             panic!()
@@ -294,14 +293,15 @@ impl<'a> FtrParser<'a>{
 
                         };*/
                         let new_begin = Attribute{
+                            kind: AttributeType::BEGIN,
                             name: self.ftr.str_dict.get(&name_id).unwrap().clone(),
                             data_type: int2data_type(data_type),
                             value,
                         };
 
-                        begin = new_begin;
+                        attributes.push(new_begin);
                     }
-                    RECORD => {
+                    RECORD_TAG => {
                         let len = cbd.read_array_length();
                         if len != 3 {
                             panic!()
@@ -315,14 +315,15 @@ impl<'a> FtrParser<'a>{
                         };*/
 
                         let new_record = Attribute{
+                            kind: AttributeType::RECORD,
                             name: self.ftr.str_dict.get(&name_id).unwrap().clone(),
                             data_type: int2data_type(data_type),
                             value,
                         };
 
-                        record = new_record;
+                        attributes.push(new_record);
                     }
-                    END => {
+                    END_TAG => {
                         let len = cbd.read_array_length();
                         if len != 3 {
                             panic!()
@@ -335,12 +336,13 @@ impl<'a> FtrParser<'a>{
 
                         };*/
                         let new_end = Attribute{
+                            kind: AttributeType::END,
                             name: self.ftr.str_dict.get(&name_id).unwrap().clone(),
                             data_type: int2data_type(data_type),
                             value,
                         };
 
-                        end = new_end;
+                        attributes.push(new_end);
                     }
                     _ => {panic!("Should never happen")}
                 }
@@ -349,9 +351,7 @@ impl<'a> FtrParser<'a>{
 
             let tx = Transaction{
                 event,
-                begin,
-                record,
-                end,
+                attributes,
             };
             tx_block.transactions.push(tx);
 

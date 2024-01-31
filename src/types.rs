@@ -35,23 +35,17 @@ pub struct TxBlock {
 #[derive(Debug)]
 pub struct Transaction {
     pub event: Event,
-    pub begin: Attribute,
-    pub record: Attribute,
-    pub end: Attribute,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Transaction {
     pub fn new() -> Self{
         let event = Event::new();
-        let begin = Attribute::new();
-        let record = Attribute::new();
-        let end = Attribute::new();
+        let attributes = vec![Attribute::new(); 0];
 
         Self {
             event,
-            begin,
-            record,
-            end,
+            attributes
         }
     }
 }
@@ -79,8 +73,9 @@ impl Event {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Attribute {
+    pub kind: AttributeType,
     pub name: String,
     pub data_type: DataType, // TODO make it so enum carries the value of the respective data_type
     pub value: i64,
@@ -88,10 +83,12 @@ pub struct Attribute {
 
 impl Attribute {
     pub fn new() -> Self{
+        let kind = AttributeType::NONE;
         let name = String::new();
         let data_type = NONE;
         let value = -1;
         Self {
+            kind,
             name,
             data_type,
             value
@@ -99,7 +96,7 @@ impl Attribute {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DataType {
     BOOLEAN,
     ENUMERATION,
@@ -113,6 +110,14 @@ pub enum DataType {
     POINTER,
     STRING,
     TIME,
+    NONE,
+}
+
+#[derive(Debug, Clone)]
+pub enum AttributeType {
+    BEGIN,
+    RECORD,
+    END,
     NONE,
 }
 

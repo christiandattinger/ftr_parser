@@ -40,6 +40,7 @@ impl<'a> FtrParser<'a>{
     }
 
     //TODO change to work with buffered readers
+    //TODO proper error handling
     fn parse_input<R: Read>(&mut self, mut cbor_decoder: CborDecoder<R>) {
         let tag = cbor_decoder.read_tag();
         if tag != 55799 {
@@ -125,8 +126,8 @@ impl<'a> FtrParser<'a>{
                         transactions: vec![],
                     };
 
-                    Self::parse_tx_block(self, &mut CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string())), &mut tx_block);
-                    self.ftr.tx_blocks.push(tx_block);
+                    Self::parse_tx_block(self, &mut CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string())), &mut tx_block, stream_id);
+                    //self.ftr.tx_blocks.push(tx_block);
 
                 }
 
@@ -152,8 +153,8 @@ impl<'a> FtrParser<'a>{
                     let bytes = cbor_decoder.read_byte_string();
                     decompress_into(bytes.as_slice(), &mut buf).expect("");
 
-                    Self::parse_tx_block(self, &mut CborDecoder::new(Cursor::new(buf)), &mut tx_block);
-                    self.ftr.tx_blocks.push(tx_block);
+                    Self::parse_tx_block(self, &mut CborDecoder::new(Cursor::new(buf)), &mut tx_block, stream_id);
+                    //self.ftr.tx_blocks.push(tx_block);
                 }
 
                 RELATIONSHIP_CHUNK_UNCOMP => {
@@ -225,7 +226,7 @@ impl<'a> FtrParser<'a>{
             let kind_id = cbd.read_int();
             let kind = self.ftr.str_dict.get(&kind_id).expect("");
 
-            self.ftr.tx_streams.push(TxStream{id: stream_id, name: name.clone(), kind: kind.clone()});
+            self.ftr.tx_streams.push(TxStream{id: stream_id, name: name.clone(), kind: kind.clone(), generators: vec![]});
 
         } else if dir_tag == GENERATOR as i64{
             let len = cbd.read_array_length();
@@ -240,12 +241,15 @@ impl<'a> FtrParser<'a>{
 
             let stream_id = cbd.read_int();
 
-            self.ftr.tx_generators.push(TxGenerator{id: gen_id, name: name.clone(), stream_id});
+            let generator = TxGenerator{id: gen_id, name: name.clone(), stream_id, transactions: vec![]};
 
+            //self.ftr.tx_generators.push(generator);
+            let belongs_to_stream= self.ftr.tx_streams.iter_mut().find(|s| s.id == stream_id).unwrap();
+            belongs_to_stream.generators.push(generator);
         }
     }
 
-    fn parse_tx_block<R: Read>(&mut self, cbd: &mut CborDecoder<R>, tx_block: &mut TxBlock) {
+    fn parse_tx_block<R: Read>(&mut self, cbd: &mut CborDecoder<R>, tx_block: &mut TxBlock, stream_id: i64) {
         let size = cbd.read_array_length();
         if size != -1 {
             panic!()
@@ -354,8 +358,19 @@ impl<'a> FtrParser<'a>{
             let tx = Transaction{
                 event,
                 attributes,
+                relations: vec![],
             };
-            tx_block.transactions.push(tx);
+            // tx_block.transactions.push(tx);
+
+            let belongs_to_generator= self.ftr.tx_streams
+                .iter_mut()
+                .find(|s| s.id == stream_id)
+                .unwrap()
+                .generators.iter_mut()
+                .find(|g| g.id == tx.event.gen_id)
+                .unwrap();
+            belongs_to_generator.transactions.push(tx);
+
 
             next_tx = cbd.peek();
 
@@ -378,8 +393,54 @@ impl<'a> FtrParser<'a>{
             let type_id = cbd.read_int();
             let from_tx_id = cbd.read_int();
             let to_tx_id = cbd.read_int();
-            let from_stream_id = if sz > 3 {cbd.read_int()} else {-1};
-            let to_stream_id = if sz > 3 {cbd.read_int()} else {-1};
+            let from_stream_id = if sz > 3 {cbd.read_int()} else {
+                let mut stream = None;
+                for curr_stream in &self.ftr.tx_streams {
+                    let mut gen = None;
+                    for curr_gen in &curr_stream.generators {
+                        let mut tx: Option<&Transaction> = None;
+                        for curr_tx in &curr_gen.transactions {
+                            if curr_tx.event.tx_id == from_tx_id {
+                                tx = Some(curr_tx);
+                                break;
+                            }
+                        }
+                        if tx.is_some() && tx.unwrap().event.gen_id == curr_gen.id {
+                            gen = Some(curr_gen);
+                            break;
+                        }
+                    }
+                    if gen.is_some() && gen.unwrap().stream_id == curr_stream.id {
+                        stream = Some(curr_stream);
+                        break;
+                    }
+                }
+                stream.unwrap().id
+            };
+            let to_stream_id = if sz > 3 {cbd.read_int()} else {
+                let mut stream = None;
+                for curr_stream in &self.ftr.tx_streams {
+                    let mut gen = None;
+                    for curr_gen in &curr_stream.generators {
+                        let mut tx: Option<&Transaction> = None;
+                        for curr_tx in &curr_gen.transactions {
+                            if curr_tx.event.tx_id == to_tx_id {
+                                tx = Some(curr_tx);
+                                break;
+                            }
+                        }
+                        if tx.is_some() && tx.unwrap().event.gen_id == curr_gen.id {
+                            gen = Some(curr_gen);
+                            break;
+                        }
+                    }
+                    if gen.is_some() && gen.unwrap().stream_id == curr_stream.id {
+                        stream = Some(curr_stream);
+                        break;
+                    }
+                }
+                stream.unwrap().id
+            };
             let rel_name = self.ftr.str_dict.get(&type_id).unwrap();
 
             let tx_relation = TxRelation{
@@ -389,7 +450,27 @@ impl<'a> FtrParser<'a>{
                 source_stream_id: from_stream_id,
                 sink_stream_id: to_stream_id,
             };
-            self.ftr.tx_relations.push(tx_relation);
+            // self.ftr.tx_relations.push(tx_relation);
+            // TODO
+            self.ftr.tx_streams
+                .iter_mut()
+                .find(|s| s.id == tx_relation.source_stream_id)
+                .expect("")
+                .generators.iter_mut()
+                .find_map(|g| g.transactions.iter_mut().find(|t| t.event.tx_id == tx_relation.source_tx_id))
+                .unwrap()
+                .relations.push(tx_relation.clone());
+
+            self.ftr.tx_streams
+                .iter_mut()
+                .find(|s| s.id == tx_relation.sink_stream_id)
+                .unwrap()
+                .generators.iter_mut()
+                .find_map(|g| g.transactions.iter_mut().find(|t| t.event.tx_id == tx_relation.sink_tx_id))
+                .unwrap()
+                .relations.push(tx_relation);
+
+
             next_rel = cbd.peek();
         }
     }

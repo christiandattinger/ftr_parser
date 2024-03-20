@@ -31,7 +31,7 @@ fn main() {
     }
     println!();
 
-    println!("Generators");
+    /*println!("Generators");
     for gen in &ftr.tx_generators {
         println!("{:?}", gen);
     }
@@ -49,7 +49,7 @@ fn main() {
     println!("Relations: ");
     for tx_relation in &ftr.tx_relations {
         println!("{:?}", tx_relation);
-    }
+    }*/
 
 
 }

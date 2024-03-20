@@ -1,23 +1,27 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
+use serde::{Deserialize, Serialize};
 use crate::types::DataType::NONE;
 use crate::types::Timescale::{Fs, Ms, Ns, Ps, S, Unit, Us};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TxStream {
     pub id: i64,
     pub name: String,
     pub kind: String,
+    pub generators: Vec<TxGenerator>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TxGenerator {
     pub id: i64,
     pub name: String,
     pub stream_id: i64, // TODO make reference to stream not id of stream
+    pub transactions: Vec<Transaction>,
 }
 
-#[derive(Debug)]
-pub struct TxRelation {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub(super) struct TxRelation {
     pub name: String,
     pub source_tx_id: i64,
     pub sink_tx_id: i64,
@@ -25,33 +29,36 @@ pub struct TxRelation {
     pub sink_stream_id: i64,
 }
 
-#[derive(Debug)]
-pub struct TxBlock {
+#[derive(Debug, Serialize, Deserialize)]
+pub(super) struct TxBlock {
     pub stream_id: i64,
     pub start_time: i64,
     pub end_time: i64,
     pub transactions: Vec<Transaction>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Transaction {
     pub event: Event,
     pub attributes: Vec<Attribute>,
+    pub relations: Vec<TxRelation>,
 }
 
 impl Transaction {
     pub fn new() -> Self{
         let event = Event::new();
         let attributes = vec![Attribute::new(); 0];
+        let relations: Vec<TxRelation> = vec![];
 
         Self {
             event,
-            attributes
+            attributes,
+            relations,
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Event {
     pub tx_id: i64,
     pub gen_id: i64,
@@ -74,7 +81,7 @@ impl Event {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Attribute {
     pub kind: AttributeType,
     pub name: String,
@@ -97,8 +104,8 @@ impl Attribute {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum DataType {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(super) enum DataType {
     BOOLEAN,
     ENUMERATION,
     INTEGER,
@@ -114,24 +121,25 @@ pub enum DataType {
     NONE,
 }
 
-#[derive(Debug, Clone)]
-pub enum AttributeType {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(super) enum AttributeType {
     BEGIN,
     RECORD,
     END,
     NONE,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FTR {
     pub time_scale: Timescale,
     pub str_dict: HashMap<i64, String>,
     pub tx_streams: Vec<TxStream>,
-    pub tx_generators: Vec<TxGenerator>,
-    pub tx_blocks: Vec<TxBlock>,
-    pub tx_relations: Vec<TxRelation>,
+    //pub tx_generators: Vec<TxGenerator>, // TODO REMOVE
+    //pub tx_blocks: Vec<TxBlock>,    // TODO REMOVE
+    // pub tx_relations: Vec<TxRelation>, // TODO REMOVE
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub enum Timescale {
     Fs,
     Ps,
@@ -140,6 +148,7 @@ pub enum Timescale {
     Ms,
     S,
     Unit,
+    None,
 }
 
 impl Timescale {

@@ -1,10 +1,12 @@
 [package]
-name = "parser_tests"
+name = "ftr_parser"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 lz4_flex = "0.11.2"
+color-eyre = "0.6.2"
+serde = { version = "1.0.197", features = ["derive"] }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

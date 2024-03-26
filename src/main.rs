@@ -31,6 +31,8 @@ fn main() {
     }
     println!();
 
+    println!("Max timestamp: {:?}", ftr.max_timestamp)
+
     /*println!("Generators");
     for gen in &ftr.tx_generators {
         println!("{:?}", gen);

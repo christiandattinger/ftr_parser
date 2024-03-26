@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
+use num_bigint::BigInt;
 use serde::{Deserialize, Serialize};
 use crate::types::DataType::NONE;
 use crate::types::Timescale::{Fs, Ms, Ns, Ps, S, Unit, Us};
@@ -134,6 +135,7 @@ pub struct FTR {
     pub time_scale: Timescale,
     pub str_dict: HashMap<i64, String>,
     pub tx_streams: Vec<TxStream>,
+    pub max_timestamp: BigInt
     //pub tx_generators: Vec<TxGenerator>, // TODO REMOVE
     //pub tx_blocks: Vec<TxBlock>,    // TODO REMOVE
     // pub tx_relations: Vec<TxRelation>, // TODO REMOVE

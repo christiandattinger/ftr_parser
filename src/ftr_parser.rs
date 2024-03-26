@@ -1,5 +1,6 @@
 use std::io::{Cursor, Read};
 use lz4_flex::decompress_into;
+use num_bigint::BigInt;
 use crate::cbor_decoder::CborDecoder;
 use crate::types::{Attribute, AttributeType, DataType, Event, FTR, Timescale, Transaction, TxBlock, TxGenerator, TxRelation, TxStream};
 use crate::types::DataType::*;
@@ -118,6 +119,9 @@ impl<'a> FtrParser<'a>{
                     let stream_id = cbor_decoder.read_int();
                     let start_time = cbor_decoder.read_int(); // start time of block
                     let end_time = cbor_decoder.read_int();
+                    if BigInt::from(end_time) > self.ftr.max_timestamp {
+                        self.ftr.max_timestamp = BigInt::from(end_time);
+                    }
 
                     let mut tx_block = TxBlock{
                         stream_id,
@@ -141,6 +145,10 @@ impl<'a> FtrParser<'a>{
                     let start_time = cbor_decoder.read_int(); // start time of block
                     let end_time = cbor_decoder.read_int();
                     let uncomp_size = cbor_decoder.read_int();
+
+                    if BigInt::from(end_time) > self.ftr.max_timestamp {
+                        self.ftr.max_timestamp = BigInt::from(end_time);
+                    }
 
                     let mut tx_block = TxBlock{
                         stream_id,

@@ -3,21 +3,24 @@ mod cbor_decoder;
 mod types;
 mod parse;
 
-use std::fs::File;
-use crate::parse::parse_ftr;
+use crate::parse::{drop_stream_from_memory, load_stream_into_memory, parse_ftr};
 
-fn main() {
+fn main() -> color_eyre::Result<()>{
 
     let comp = true;
     let file = if comp {
-        File::open("my_db_c.ftr").unwrap()
+        String::from("my_db_c.ftr")
     }else {
-        File::open("my_db.ftr").unwrap()
+        String::from("my_db.ftr")
     };
 
-    let ftr = parse_ftr(file).unwrap();
+    //let file = String::from("my_db_invalid.ftr");
+
+    let mut ftr = parse_ftr(file)?;
 
     println!("Timescale: {:?}", ftr.time_scale);
+
+    println!("Max timestamp: {:?}", ftr.max_timestamp);
 
     println!("Dictionary: ");
     for entry in &ftr.str_dict {
@@ -31,28 +34,57 @@ fn main() {
     }
     println!();
 
-    println!("Max timestamp: {:?}", ftr.max_timestamp)
-
-    /*println!("Generators");
+    println!("Generators: ");
     for gen in &ftr.tx_generators {
-        println!("{:?}", gen);
-    }
-    println!();
-
-    println!("Transactions: ");
-    for tx_block in &ftr.tx_blocks {
-        for tx in &tx_block.transactions {
-            println!("{:?}", tx);
+        println!("Generator {:?} {:?}: ", gen.0, gen.1.name.clone());
+        for tx in &gen.1.transactions {
+            println!("  {:?}", tx);
         }
     }
     println!();
 
-
     println!("Relations: ");
-    for tx_relation in &ftr.tx_relations {
-        println!("{:?}", tx_relation);
-    }*/
+    for rel in &ftr.tx_relations {
+        println!("{:?}", rel);
+    }
 
+    load_stream_into_memory(&mut ftr, 1)?;
+    load_stream_into_memory(&mut ftr, 2)?;
+
+    println!("Streams: ");
+    for stream in &ftr.tx_streams {
+        println!("{:?}", stream);
+    }
+    println!();
+
+    println!("Generators: ");
+    for gen in &ftr.tx_generators {
+        println!("Generator {:?} {:?}: ", gen.0, gen.1.name.clone());
+        for tx in &gen.1.transactions {
+            println!("  {:?}", tx);
+        }
+
+    }
+    println!();
+
+    drop_stream_from_memory(&mut ftr, 1);
+
+    println!("Streams: ");
+    for stream in &ftr.tx_streams {
+        println!("{:?}", stream);
+    }
+    println!();
+
+    println!("Generators: ");
+    for gen in &ftr.tx_generators {
+        println!("Generator {:?} {:?}: ", gen.0, gen.1.name.clone());
+        for tx in &gen.1.transactions {
+            println!("  {:?}", tx);
+        }
+    }
+    println!();
+
+    Ok(())
 
 }
 

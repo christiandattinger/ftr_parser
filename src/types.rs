@@ -1,41 +1,34 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug};
 use num_bigint::BigInt;
 use serde::{Deserialize, Serialize};
-use crate::types::DataType::NONE;
+use crate::types::DataType::Error;
 use crate::types::Timescale::{Fs, Ms, Ns, Ps, S, Unit, Us};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TxStream {
-    pub id: i64,
+    pub id: usize,
     pub name: String,
     pub kind: String,
-    pub generators: Vec<TxGenerator>,
+    pub generators: Vec<usize>,
+    pub(super) tx_block_ids: Vec<(u64, bool)>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TxGenerator {
-    pub id: i64,
+    pub id: usize,
+    pub stream_id: usize,
     pub name: String,
-    pub stream_id: i64, // TODO make reference to stream not id of stream
     pub transactions: Vec<Transaction>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub(super) struct TxRelation {
+pub struct TxRelation {
     pub name: String,
-    pub source_tx_id: i64,
-    pub sink_tx_id: i64,
-    pub source_stream_id: i64,
-    pub sink_stream_id: i64,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub(super) struct TxBlock {
-    pub stream_id: i64,
-    pub start_time: i64,
-    pub end_time: i64,
-    pub transactions: Vec<Transaction>,
+    pub source_tx_id: usize,
+    pub sink_tx_id: usize,
+    pub source_stream_id: usize,
+    pub sink_stream_id: usize
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -61,16 +54,16 @@ impl Transaction {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Event {
-    pub tx_id: i64,
-    pub gen_id: i64,
+    pub tx_id: usize,
+    pub gen_id: usize,
     pub start_time: i64,
     pub end_time: i64,
 }
 
 impl Event {
     pub fn new() -> Self{
-        let tx_id = -1;
-        let gen_id = -1;
+        let tx_id = 0;
+        let gen_id = 0;
         let start_time = -1;
         let end_time = -1;
         Self {
@@ -94,7 +87,7 @@ impl Attribute {
     pub fn new() -> Self{
         let kind = AttributeType::NONE;
         let name = String::new();
-        let data_type = NONE;
+        let data_type = Error;
         let value = -1;
         Self {
             kind,
@@ -107,19 +100,19 @@ impl Attribute {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) enum DataType {
-    BOOLEAN,
-    ENUMERATION,
-    INTEGER,
-    UNSIGNED,
-    FLOATING_POINT_NUMBER,
-    BIT_VECTOR,
-    LOGIC_VECTOR,
-    FIXED_POINT_INTERGER,
-    UNSIGNED_FIXED_POINT_INTEGER,
-    POINTER,
-    STRING,
-    TIME,
-    NONE,
+    Boolean,
+    Enumeration,
+    Integer,
+    Unsigned,
+    FloatingPointNumber,
+    BitVector,
+    LogicVector,
+    FixedPointInteger,
+    UnsignedFixedPointInteger,
+    Pointer,
+    String,
+    Time,
+    Error,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -133,12 +126,12 @@ pub(super) enum AttributeType {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FTR {
     pub time_scale: Timescale,
-    pub str_dict: HashMap<i64, String>,
-    pub tx_streams: Vec<TxStream>,
-    pub max_timestamp: BigInt
-    //pub tx_generators: Vec<TxGenerator>, // TODO REMOVE
-    //pub tx_blocks: Vec<TxBlock>,    // TODO REMOVE
-    // pub tx_relations: Vec<TxRelation>, // TODO REMOVE
+    pub max_timestamp: BigInt,
+    pub str_dict: HashMap<usize, String>,
+    pub tx_streams: HashMap<usize, TxStream>,
+    pub tx_generators: HashMap<usize, TxGenerator>,
+    pub tx_relations: HashMap<(usize, usize), TxRelation>, // TODO figure it out
+    pub(crate) file_name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]

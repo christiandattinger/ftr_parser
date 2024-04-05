@@ -1,4 +1,4 @@
-use std::io::{Error, Read};
+use std::io::{Error, Read, Seek, SeekFrom};
 
 const ONE_BYTE: u8 = 24;
 const TWO_BYTES: u8 = 25;
@@ -15,11 +15,11 @@ const TYPE_MAP: u8 = 0x5;
 const TYPE_TAG: u8 = 0x06;
 
 pub struct CborDecoder<R>{
-    input_stream: R,
+    pub(crate) input_stream: R,
     peek_buf: Vec<u8>,
 }
 
-impl <R: Read>CborDecoder<R>{
+impl <R: Read + Seek>CborDecoder<R>{
     pub fn new(input_stream: R) -> Self {
         let mut peek_buf = vec![0u8; 1];
         peek_buf.clear();
@@ -108,6 +108,11 @@ impl <R: Read>CborDecoder<R>{
         buf
     }
 
+    pub fn skip_byte_string(&mut self) {
+        let len = Self::read_major_type_with_size(self, TYPE_BYTE_STRING);
+        self.input_stream.seek(SeekFrom::Current(len)).expect("");
+    }
+
     pub fn read_int(&mut self) -> i64 {
         let mut buf = vec![0u8; 1];
         self.input_stream.read_exact(&mut buf).expect("");
@@ -119,7 +124,7 @@ impl <R: Read>CborDecoder<R>{
 
     pub fn expect_integer_type(&mut self, ib: u8) -> i64 {
         let major_type = (ib & 0xff) >> 5;
-        if (major_type as u8 != TYPE_UNSIGNED_INT) && (major_type as u8 != TYPE_NEGATIVE_INT) {
+        if (major_type != TYPE_UNSIGNED_INT) && (major_type != TYPE_NEGATIVE_INT) {
             panic!()
         }else {
             return -(major_type as i64)

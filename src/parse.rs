@@ -17,7 +17,7 @@ pub fn parse_ftr(file_name: String) -> color_eyre::Result<FTR>{
         tx_streams: HashMap::new(),
         max_timestamp: BigInt::from(0),
         tx_generators: HashMap::new(),
-        tx_relations: HashMap::new(),
+        tx_relations: vec![],
         file_name: file_name.clone(),
     };
     let mut ftr_parser = FtrParser::new(&mut ftr);

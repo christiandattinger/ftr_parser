@@ -4,6 +4,9 @@ use num_bigint::BigInt;
 use serde::{Deserialize, Serialize};
 use crate::types::DataType::Error;
 use crate::types::Timescale::{Fs, Ms, Ns, Ps, S, Unit, Us};
+use core::fmt;
+
+type is_compressed = bool;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TxStream {
@@ -11,7 +14,7 @@ pub struct TxStream {
     pub name: String,
     pub kind: String,
     pub generators: Vec<usize>,
-    pub(super) tx_block_ids: Vec<(u64, bool)>,
+    pub(super) tx_block_ids: Vec<(u64, is_compressed)>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -31,28 +34,15 @@ pub struct TxRelation {
     pub sink_stream_id: usize
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Transaction {
     pub event: Event,
     pub attributes: Vec<Attribute>,
-    pub relations: Vec<TxRelation>,
+    pub inc_relations: Vec<TxRelation>,
+    pub out_relations: Vec<TxRelation>,
 }
 
-impl Transaction {
-    pub fn new() -> Self{
-        let event = Event::new();
-        let attributes = vec![Attribute::new(); 0];
-        let relations: Vec<TxRelation> = vec![];
-
-        Self {
-            event,
-            attributes,
-            relations,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Event {
     pub tx_id: usize,
     pub gen_id: usize,
@@ -130,7 +120,7 @@ pub struct FTR {
     pub str_dict: HashMap<usize, String>,
     pub tx_streams: HashMap<usize, TxStream>,
     pub tx_generators: HashMap<usize, TxGenerator>,
-    pub tx_relations: HashMap<(usize, usize), TxRelation>, // TODO figure it out
+    pub tx_relations: Vec<TxRelation>,
     pub(crate) file_name: String,
 }
 
@@ -157,5 +147,11 @@ impl Timescale {
             -20 => Fs,
             _ => Unit,
         }
+    }
+}
+
+impl fmt::Display for Timescale {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }

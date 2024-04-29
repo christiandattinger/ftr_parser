@@ -359,14 +359,22 @@ impl <'a> FtrParser<'a>{
 
             }
 
-            let tx = Transaction{
+            let mut tx = Transaction{
                 event,
                 attributes,
-                relations: vec![],
+                inc_relations: vec![],
+                out_relations: vec![],
             };
 
-            self.ftr.tx_generators.get_mut(&tx.event.gen_id).unwrap().transactions.push(tx);
+            for rel in &self.ftr.tx_relations {
+                if rel.source_tx_id == tx.event.tx_id {
+                    tx.out_relations.push(rel.clone());
+                } else if rel.sink_tx_id == tx.event.tx_id {
+                    tx.inc_relations.push(rel.clone());
+                }
+            }
 
+            self.ftr.tx_generators.get_mut(&tx.event.gen_id).unwrap().transactions.push(tx);
 
             next_tx = cbd.peek();
 
@@ -434,7 +442,7 @@ impl <'a> FtrParser<'a>{
                 sink_stream_id: to_stream_id,
             };
 
-            self.ftr.tx_relations.insert((from_tx_id, to_tx_id), tx_relation);
+            self.ftr.tx_relations.push(tx_relation);
 
             next_rel = cbd.peek();
         }

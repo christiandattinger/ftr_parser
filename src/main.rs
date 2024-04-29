@@ -7,7 +7,7 @@ use crate::parse::{drop_stream_from_memory, load_stream_into_memory, parse_ftr};
 
 fn main() -> color_eyre::Result<()>{
 
-    let comp = true;
+    let comp = false;
     let file = if comp {
         String::from("my_db_c.ftr")
     }else {

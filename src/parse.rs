@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::Cursor;
+use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 use num_bigint::BigInt;
+use crate::cbor_decoder::CborDecoder;
 use crate::ftr_parser::FtrParser;
 use crate::types::{FTR, Timescale};
 
@@ -62,4 +63,11 @@ pub fn drop_stream_from_memory(ftr: &mut FTR, stream_id: usize) {
     for gen_id in &ftr.tx_streams.get(&stream_id).expect("").generators {
         ftr.tx_generators.get_mut(gen_id).unwrap().transactions = vec![];
     }
+}
+
+pub fn is_ftr<R: Read + Seek>(input: &mut R) -> bool {
+    let mut cbor_decoder = CborDecoder::new(input);
+    let tag = cbor_decoder.read_tag();
+    cbor_decoder.input_stream.seek(SeekFrom::Start(0)).unwrap();
+    tag == 55799
 }

@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use color_eyre::eyre::bail;
-use lz4_flex::block::DecompressError;
 use lz4_flex::decompress_into;
 use num_bigint::BigInt;
 use crate::cbor_decoder::CborDecoder;
@@ -37,7 +36,7 @@ impl <'a> FtrParser<'a>{
         Self {ftr}
     }
 
-    pub fn load<R: Read + Seek>(&mut self, file: R) -> color_eyre::Result<()> {
+    pub(super) fn load<R: Read + Seek>(&mut self, file: R) -> color_eyre::Result<()> {
         let cbor_decoder = CborDecoder::new(file);
         Self::parse_input(self, cbor_decoder)?;
         Ok(())
@@ -129,7 +128,12 @@ impl <'a> FtrParser<'a>{
 
                     self.ftr.tx_streams.get_mut(&stream_id).unwrap().tx_block_ids.push((cbor_decoder.input_stream.stream_position().expect(""), false));
 
-                    cbor_decoder.skip_byte_string(); // we don't want to load the transactions right now, so we just skip this whole block
+                    if self.ftr.file_name == "" {
+                        let mut cbd = CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string()));
+                        Self::parse_tx_block(self, &mut cbd)?;
+                    } else {
+                        cbor_decoder.skip_byte_string();  // we don't want to load the transactions right now, so we just skip this whole block
+                    }
                 }
 
                 TX_BLOCK_CHUNK_COMP => {
@@ -147,9 +151,14 @@ impl <'a> FtrParser<'a>{
                     }
 
                     self.ftr.tx_streams.get_mut(&stream_id).unwrap().tx_block_ids.push((cbor_decoder.input_stream.stream_position().expect(""), true));
-
                     let _uncomp_size = cbor_decoder.read_int();
-                    cbor_decoder.skip_byte_string();
+
+                    if self.ftr.file_name == "" {
+                        let mut cbd = CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string()));
+                        Self::parse_tx_block(self, &mut cbd)?;
+                    } else {
+                        cbor_decoder.skip_byte_string();
+                    }
                 }
 
                 RELATIONSHIP_CHUNK_UNCOMP => {
@@ -255,7 +264,7 @@ impl <'a> FtrParser<'a>{
         Ok(())
     }
 
-    fn parse_tx_block<R: Read + Seek>(&mut self, cbd: &mut CborDecoder<R>, stream_id: usize) -> color_eyre::Result<()>{
+    fn parse_tx_block<R: Read + Seek>(&mut self, cbd: &mut CborDecoder<R>) -> color_eyre::Result<()>{
         let size = cbd.read_array_length();
         if size != -1 {
             bail!("Transaction Block does not have indefinite length!");
@@ -451,6 +460,9 @@ impl <'a> FtrParser<'a>{
 
     //loads the transactions of all generators of stream 'stream_id'
     pub(super) fn load_transactions(&mut self, stream_id: usize) -> color_eyre::Result<()>{
+        if self.ftr.file_name == "" {
+            bail!("Cannot load transaction when then input is not a file! \nTransactions should already be loaded.")
+        }
         let reader = File::open(&self.ftr.file_name).unwrap();
 
         let tx_block_ids = self.ftr.tx_streams.get(&stream_id).unwrap().tx_block_ids.clone();
@@ -468,12 +480,12 @@ impl <'a> FtrParser<'a>{
                 let bytes = cbor_decoder.read_byte_string();
                 match decompress_into(bytes.as_slice(), &mut buf) {
                     Ok(_) => {}
-                    Err(e) => {bail!("Could not decompress compressed data correctly!")}
+                    Err(e) => {bail!("Could not decompress compressed data correctly: {}", e)}
                 }
 
-                Self::parse_tx_block(self, &mut CborDecoder::new(Cursor::new(buf)), stream_id)?;
+                Self::parse_tx_block(self, &mut CborDecoder::new(Cursor::new(buf)))?;
             } else {
-                Self::parse_tx_block(self, &mut CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string())), stream_id)?;
+                Self::parse_tx_block(self, &mut CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string())))?;
             }
         }
         Ok(())

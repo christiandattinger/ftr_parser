@@ -6,7 +6,7 @@ use crate::types::DataType::Error;
 use crate::types::Timescale::{Fs, Ms, Ns, Ps, S, Unit, Us};
 use core::fmt;
 
-type is_compressed = bool;
+type IsCompressed = bool;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TxStream {
@@ -14,7 +14,7 @@ pub struct TxStream {
     pub name: String,
     pub kind: String,
     pub generators: Vec<usize>,
-    pub(super) tx_block_ids: Vec<(u64, is_compressed)>,
+    pub(super) tx_block_ids: Vec<(u64, IsCompressed)>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -89,7 +89,7 @@ impl Attribute {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(super) enum DataType {
+pub enum DataType {
     Boolean,
     Enumeration,
     Integer,
@@ -106,7 +106,7 @@ pub(super) enum DataType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(super) enum AttributeType {
+pub enum AttributeType {
     BEGIN,
     RECORD,
     END,

@@ -3,7 +3,8 @@ mod cbor_decoder;
 mod types;
 mod parse;
 
-use crate::parse::{drop_stream_from_memory, load_stream_into_memory, parse_ftr};
+use std::fs;
+use crate::parse::{drop_stream_from_memory, load_stream_into_memory, parse_ftr, read_from_bytes};
 
 fn main() -> color_eyre::Result<()>{
 
@@ -16,7 +17,10 @@ fn main() -> color_eyre::Result<()>{
 
     //let file = String::from("my_db_invalid.ftr");
 
-    let mut ftr = parse_ftr(file)?;
+    //let mut ftr = parse_ftr(file)?;
+
+    let bytes = fs::read(file)?;
+    let mut ftr = read_from_bytes(bytes)?;
 
     println!("Timescale: {:?}", ftr.time_scale);
 

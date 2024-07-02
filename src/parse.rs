@@ -65,7 +65,7 @@ pub fn drop_stream_from_memory(ftr: &mut FTR, stream_id: usize) {
     }
 }
 
-pub fn is_ftr<R: Read + Seek>(input: &mut R) -> bool {
+pub fn is_ftr<R: std::io::Read + std::io::Seek>(input: &mut R) -> bool {
     let mut cbor_decoder = CborDecoder::new(input);
     let tag = cbor_decoder.read_tag();
     cbor_decoder.input_stream.seek(SeekFrom::Start(0)).unwrap();

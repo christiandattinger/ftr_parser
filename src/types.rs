@@ -8,7 +8,7 @@ use core::fmt;
 
 type IsCompressed = bool;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TxStream {
     pub id: usize,
     pub name: String,
@@ -17,7 +17,7 @@ pub struct TxStream {
     pub(super) tx_block_ids: Vec<(u64, IsCompressed)>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TxGenerator {
     pub id: usize,
     pub stream_id: usize,

@@ -4,7 +4,7 @@ use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 use num_bigint::BigInt;
 use crate::cbor_decoder::CborDecoder;
 use crate::ftr_parser::FtrParser;
-use crate::types::{FTR, Timescale};
+use crate::types::{FTR, Timescale, TxGenerator, TxStream};
 
 
 
@@ -70,4 +70,22 @@ pub fn is_ftr<R: std::io::Read + std::io::Seek>(input: &mut R) -> bool {
     let tag = cbor_decoder.read_tag();
     cbor_decoder.input_stream.seek(SeekFrom::Start(0)).unwrap();
     tag == 55799
+}
+
+pub fn get_stream_from_name(ftr: &FTR, name: String) -> Option<&TxStream> {
+    ftr.tx_streams
+        .values()
+        .find(|t| t.name == name)
+}
+
+
+/// Returns the `TxGenerator` with the name `gen_name` from the stream with id `stream_id`.
+pub fn get_generator_from_name(ftr: &FTR, stream_id: usize, gen_name: String) -> Option<&TxGenerator> {
+    ftr.tx_streams
+        .get(&stream_id)
+        .unwrap()
+        .generators
+        .iter()
+        .map(|id| ftr.tx_generators.get(id).unwrap())
+        .find(|gen| gen.name == gen_name)
 }

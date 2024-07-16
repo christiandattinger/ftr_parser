@@ -1,8 +1,10 @@
 use std::fs::File;
 use std::io::{Cursor, Read, Seek, SeekFrom};
+
 use color_eyre::eyre::bail;
 use lz4_flex::decompress_into;
 use num_bigint::BigInt;
+
 use crate::cbor_decoder::CborDecoder;
 use crate::types::{Attribute, AttributeType, DataType, Event, FTR, Timescale, Transaction, TxGenerator, TxRelation, TxStream};
 use crate::types::DataType::*;
@@ -32,7 +34,6 @@ pub struct FtrParser<'a> {
 impl <'a> FtrParser<'a>{
 
     pub fn new(ftr: &'a mut FTR) -> FtrParser<'a>{
-
         Self {ftr}
     }
 

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::types::DataType::Error;
 use crate::types::Timescale::{Fs, Ms, Ns, Ps, S, Unit, Us};
 use core::fmt;
+use crate::ftr_parser::FtrParser;
 
 type IsCompressed = bool;
 
@@ -122,6 +123,49 @@ pub struct FTR {
     pub tx_generators: HashMap<usize, TxGenerator>,
     pub tx_relations: Vec<TxRelation>,
     pub(crate) file_name: String,
+}
+
+impl FTR {
+    // Takes a stream id and loads all associated transactions into memory
+    pub fn load_stream_into_memory(&mut self, stream_id: usize) -> color_eyre::Result<()>{
+        let mut ftr_parser = FtrParser::new(self);
+
+        ftr_parser.load_transactions(stream_id)?;
+
+        Ok(())
+    }
+
+    // drops all transactions from this stream from memory, but the stream itself doesn't get deleted
+    pub fn drop_stream_from_memory(&mut self, stream_id: usize) {
+        for gen_id in &self.tx_streams.get(&stream_id).expect("").generators {
+            self.tx_generators.get_mut(gen_id).unwrap().transactions = vec![];
+        }
+    }
+
+    pub fn get_stream(&self, stream_id: usize) -> Option<&TxStream> {
+        self.tx_streams.get(&stream_id)
+    }
+
+    pub fn get_stream_from_name(&self, name: String) -> Option<&TxStream> {
+        self.tx_streams
+            .values()
+            .find(|t| t.name == name)
+    }
+
+    pub fn get_generator(&self, gen_id: usize) -> Option<&TxGenerator> {
+        self.tx_generators.get(&gen_id)
+    }
+
+    /// Returns the `TxGenerator` with the name `gen_name` from the stream with id `stream_id`.
+    pub fn get_generator_from_name(&self, stream_id: usize, gen_name: String) -> Option<&TxGenerator> {
+        self.tx_streams
+            .get(&stream_id)
+            .unwrap()
+            .generators
+            .iter()
+            .map(|id| self.tx_generators.get(id).unwrap())
+            .find(|gen| gen.name == gen_name)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]

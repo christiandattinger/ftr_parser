@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
+use std::io::{Cursor, SeekFrom};
+
 use num_bigint::BigInt;
+
 use crate::cbor_decoder::CborDecoder;
 use crate::ftr_parser::FtrParser;
-use crate::types::{FTR, Timescale, TxGenerator, TxStream};
-
-
+use crate::types::{FTR, Timescale};
 
 /// The function you probably want to call first.
 /// Parses the file with the given name and returns a FTR variable with all streams, generators and relations already accessible.
@@ -49,22 +49,6 @@ pub fn read_from_bytes(bytes: Vec<u8>) -> color_eyre::Result<FTR>{
     Ok(ftr)
 }
 
-// Takes a stream id and loads all associated transactions into memory
-pub fn load_stream_into_memory(ftr: &mut FTR, stream_id: usize) -> color_eyre::Result<()>{
-    let mut ftr_parser = FtrParser::new(ftr);
-
-    ftr_parser.load_transactions(stream_id)?;
-
-    Ok(())
-}
-
-// drops all transactions from this stream from memory, but the stream itself doesn't get deleted
-pub fn drop_stream_from_memory(ftr: &mut FTR, stream_id: usize) {
-    for gen_id in &ftr.tx_streams.get(&stream_id).expect("").generators {
-        ftr.tx_generators.get_mut(gen_id).unwrap().transactions = vec![];
-    }
-}
-
 pub fn is_ftr<R: std::io::Read + std::io::Seek>(input: &mut R) -> bool {
     let mut cbor_decoder = CborDecoder::new(input);
     let tag = cbor_decoder.read_tag();
@@ -72,20 +56,3 @@ pub fn is_ftr<R: std::io::Read + std::io::Seek>(input: &mut R) -> bool {
     tag == 55799
 }
 
-pub fn get_stream_from_name(ftr: &FTR, name: String) -> Option<&TxStream> {
-    ftr.tx_streams
-        .values()
-        .find(|t| t.name == name)
-}
-
-
-/// Returns the `TxGenerator` with the name `gen_name` from the stream with id `stream_id`.
-pub fn get_generator_from_name(ftr: &FTR, stream_id: usize, gen_name: String) -> Option<&TxGenerator> {
-    ftr.tx_streams
-        .get(&stream_id)
-        .unwrap()
-        .generators
-        .iter()
-        .map(|id| ftr.tx_generators.get(id).unwrap())
-        .find(|gen| gen.name == gen_name)
-}

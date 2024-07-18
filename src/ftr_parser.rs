@@ -7,7 +7,6 @@ use num_bigint::BigInt;
 
 use crate::cbor_decoder::CborDecoder;
 use crate::types::{Attribute, AttributeType, DataType, Event, FTR, Timescale, Transaction, TxGenerator, TxRelation, TxStream};
-use crate::types::DataType::*;
 
 const INFO_CHUNK: u64 = 6;
 const DICTIONARY_CHUNK_UNCOMP: u64 = 8;
@@ -26,6 +25,19 @@ const EVENT_TAG: u64 = 6;
 const BEGIN_TAG: u64 = 7;
 const RECORD_TAG: u64 = 8;
 const END_TAG: u64 = 9;
+
+const BOOLEAN: u8 = 0;
+const ENUMERATION: u8 = 1;
+const INTEGER: u8 = 2;
+const UNSIGNED: u8 = 3;
+const FLOATING_POINT_NUMBER: u8 = 4;
+const BIT_VECTOR: u8 = 5;
+const LOGIC_VECTOR: u8 = 6;
+const FIXED_POINT_INTEGER: u8 = 7;
+const UNSIGNED_FIXED_POINT_INTEGER: u8 = 8;
+const POINTER: u8 = 9;
+const STRING: u8 = 10;
+const TIME: u8 = 11;
 
 pub struct FtrParser<'a> {
     ftr: &'a mut FTR,
@@ -74,7 +86,7 @@ impl <'a> FtrParser<'a>{
                     if epoch_tag != 1 {
                         bail!("Wrong epoch tag. Not a valid FTR file!");
                     }
-                    cbd.read_int(); // creation time
+                    let _creation_time = cbd.read_int();
                 }
                 DICTIONARY_CHUNK_UNCOMP => {
                     let mut cbd: CborDecoder<Cursor<Vec<u8>>> = CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string()));
@@ -277,7 +289,7 @@ impl <'a> FtrParser<'a>{
             let arr_len = cbd.read_array_length();
 
             let mut event = Event::new();
-            let mut attributes = vec![Attribute::new(); 0];
+            let mut attributes = vec![Attribute::new_empty(); 0];
 
             for _i in 0..arr_len {
                 let tag = cbd.read_tag();
@@ -305,20 +317,8 @@ impl <'a> FtrParser<'a>{
                         if len != 3 {
                             bail!("Begin Attribute has wrong size!");
                         }
-                        let name_id = cbd.read_int() as usize;
-                        let data_type = cbd.read_int();
-                        let value = cbd.read_int(); // Placeholder TODO should be differentiated based on data type
-                        /*let value = match data_type {
-                            0 => cbd.read_int()
 
-                        };*/
-                        let new_begin = Attribute{
-                            kind: AttributeType::BEGIN,
-                            name: self.ftr.str_dict.get(&name_id).unwrap().clone(),
-                            data_type: int2data_type(data_type),
-                            value,
-                        };
-
+                        let new_begin = self.parse_attribute(cbd, BEGIN_TAG);
                         attributes.push(new_begin);
                     }
                     RECORD_TAG => {
@@ -326,21 +326,7 @@ impl <'a> FtrParser<'a>{
                         if len != 3 {
                             bail!("Record Attribute has wrong size!");
                         }
-                        let name_id = cbd.read_int() as usize;
-                        let data_type = cbd.read_int();
-                        let value = cbd.read_int(); // Placeholder TODO should be differentiated based on data type
-                        /*let value = match data_type {
-                            0 => cbd.read_int()
-
-                        };*/
-
-                        let new_record = Attribute{
-                            kind: AttributeType::RECORD,
-                            name: self.ftr.str_dict.get(&name_id).unwrap().clone(),
-                            data_type: int2data_type(data_type),
-                            value,
-                        };
-
+                        let new_record = self.parse_attribute(cbd, RECORD_TAG);
                         attributes.push(new_record);
                     }
                     END_TAG => {
@@ -348,20 +334,7 @@ impl <'a> FtrParser<'a>{
                         if len != 3 {
                             bail!("End Attribute has wrong size!");
                         }
-                        let name_id = cbd.read_int() as usize;
-                        let data_type = cbd.read_int();
-                        let value = cbd.read_int(); // Placeholder TODO should be differentiated based on data type
-                        /*let value = match data_type {
-                            0 => cbd.read_int()
-
-                        };*/
-                        let new_end = Attribute{
-                            kind: AttributeType::END,
-                            name: self.ftr.str_dict.get(&name_id).unwrap().clone(),
-                            data_type: int2data_type(data_type),
-                            value,
-                        };
-
+                        let new_end = self.parse_attribute(cbd, END_TAG);
                         attributes.push(new_end);
                     }
                     _ => {bail!("Not a valid Transaction Block Tag")}
@@ -491,26 +464,37 @@ impl <'a> FtrParser<'a>{
         }
         Ok(())
     }
-}
 
-fn int2data_type(input: i64) -> DataType{
-    match input {
-        0 => Boolean,
-        1 => Enumeration,
-        2 => Integer,
-        3 => Unsigned,
-        4 => FloatingPointNumber,
-        5 => BitVector,
-        6 => LogicVector,
-        7 => FixedPointInteger,
-        8 => UnsignedFixedPointInteger,
-        9 => Pointer,
-        10 => String,
-        11 => Time,
-        _ => Error,
+    fn parse_attribute<R: Read + Seek>(&self, cbd: &mut CborDecoder<R>, attribute_type: u64) -> Attribute{
+        let name_id = cbd.read_int() as usize;
+        let data_type = cbd.read_int();
+        let data_type_with_value = match data_type as u8 {
+            BOOLEAN => DataType::Boolean(cbd.read_boolean()),
+            ENUMERATION => DataType::Enumeration(self.ftr.str_dict.get(&(cbd.read_int() as usize)).unwrap().clone()),
+            INTEGER => DataType::Integer(cbd.read_int() as u64),
+            UNSIGNED => DataType::Unsigned(cbd.read_int()),
+            FLOATING_POINT_NUMBER => DataType::FloatingPointNumber(cbd.read_float()),
+            BIT_VECTOR => DataType::BitVector(self.ftr.str_dict.get(&(cbd.read_int() as usize)).unwrap().clone()),
+            LOGIC_VECTOR => DataType::LogicVector(self.ftr.str_dict.get(&(cbd.read_int() as usize)).unwrap().clone()),
+            FIXED_POINT_INTEGER => DataType::FixedPointInteger(cbd.read_float()),
+            UNSIGNED_FIXED_POINT_INTEGER => DataType::UnsignedFixedPointInteger(cbd.read_float()),
+            POINTER => DataType::Pointer(cbd.read_int() as u64),
+            STRING => DataType::String(self.ftr.str_dict.get(&(cbd.read_int() as usize)).unwrap().clone()),
+            TIME => DataType::Time(cbd.read_int() as u64),
+            _ => DataType::Error,
+        };
+
+        let kind = match attribute_type {
+            BEGIN_TAG => AttributeType::BEGIN,
+            RECORD_TAG => AttributeType::RECORD,
+            END_TAG => AttributeType::END,
+            _ => AttributeType::NONE,
+        };
+
+        Attribute{
+            kind,
+            name: self.ftr.str_dict.get(&name_id).unwrap().clone(),
+            data_type: data_type_with_value,
+        }
     }
 }
-
-
-
-

@@ -3,7 +3,7 @@ use std::fmt::{Debug};
 use num_bigint::BigInt;
 use serde::{Deserialize, Serialize};
 use crate::types::DataType::Error;
-use crate::types::Timescale::{Fs, Ms, Ns, Ps, S, Unit, Us};
+use crate::types::Timescale::{Fs, Ms, Ns, Ps, S, Us};
 use core::fmt;
 use crate::ftr_parser::FtrParser;
 
@@ -70,39 +70,60 @@ impl Event {
 pub struct Attribute {
     pub kind: AttributeType,
     pub name: String,
-    pub data_type: DataType, // TODO make it so enum carries the value of the respective data_type
-    pub value: i64,
+    pub data_type: DataType,
 }
 
 impl Attribute {
-    pub fn new() -> Self{
+    pub fn new_empty() -> Self{
         let kind = AttributeType::NONE;
         let name = String::new();
         let data_type = Error;
-        let value = -1;
         Self {
             kind,
             name,
             data_type,
-            value
+        }
+    }
+
+    pub fn new_begin(name: String, data_type: DataType) -> Self {
+        Self {
+            kind: AttributeType::BEGIN,
+            name,
+            data_type
+        }
+    }
+
+    pub fn new_record(name: String, data_type: DataType) -> Self {
+        Self {
+            kind: AttributeType::RECORD,
+            name,
+            data_type
+        }
+    }
+
+    pub fn new_end(name: String, data_type: DataType) -> Self {
+        Self {
+            kind: AttributeType::END,
+            name,
+            data_type
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DataType {
-    Boolean,
-    Enumeration,
-    Integer,
-    Unsigned,
-    FloatingPointNumber,
-    BitVector,
-    LogicVector,
-    FixedPointInteger,
-    UnsignedFixedPointInteger,
-    Pointer,
-    String,
-    Time,
+    Boolean(bool),
+    Enumeration(String),
+    Integer(u64),
+    Unsigned(i64),
+    FloatingPointNumber(f32),
+    BitVector(String),
+    LogicVector(String),
+    FixedPointInteger(f32),
+    UnsignedFixedPointInteger(f32),
+    Pointer(u64),
+    String(String),
+    Time(u64),
     Error,
 }
 
@@ -156,7 +177,7 @@ impl FTR {
         self.tx_generators.get(&gen_id)
     }
 
-    /// Returns the `TxGenerator` with the name `gen_name` from the stream with id `stream_id`.
+    /// Returns the `Optional<TxGenerator>` with the name `gen_name` from the stream with id `stream_id`.
     pub fn get_generator_from_name(&self, stream_id: usize, gen_name: String) -> Option<&TxGenerator> {
         self.tx_streams
             .get(&stream_id)
@@ -189,7 +210,7 @@ impl Timescale {
             -12 => Ns,
             -16 => Ps,
             -20 => Fs,
-            _ => Unit,
+            _ => Timescale::None,
         }
     }
 }

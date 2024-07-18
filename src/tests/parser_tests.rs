@@ -7,7 +7,7 @@ mod test {
 
         let file = String::from("my_db.ftr");
 
-        let ftr = parse_ftr(file).unwrap();
+        let mut ftr = parse_ftr(file).unwrap();
 
         println!("Timescale: {:?}", ftr.time_scale);
         println!("Max timestamp: {:?}", ftr.max_timestamp);
@@ -23,13 +23,22 @@ mod test {
             println!("{:?}", stream);
         }
         println!();
+
+        ftr.load_stream_into_memory(1);
+        ftr.load_stream_into_memory(2);
+        ftr.load_stream_into_memory(3);
+
+        println!("Generators: ");
+        for gen in &ftr.tx_generators {
+            println!("{:?}", gen);
+        }
     }
 
     #[test]
     fn comp_parsing() {
         let file = String::from("my_db_c.ftr");
 
-        let ftr = parse_ftr(file).unwrap();
+        let mut ftr = parse_ftr(file).unwrap();
 
         println!("Timescale: {:?}", ftr.time_scale);
         println!("Max timestamp: {:?}", ftr.max_timestamp);
@@ -45,6 +54,15 @@ mod test {
             println!("{:?}", stream);
         }
         println!();
+
+        ftr.load_stream_into_memory(1);
+        ftr.load_stream_into_memory(2);
+        ftr.load_stream_into_memory(3);
+
+        println!("Generators: ");
+        for gen in &ftr.tx_generators {
+            println!("{:?}", gen);
+        }
     }
 
 }

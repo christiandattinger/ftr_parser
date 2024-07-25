@@ -3,7 +3,7 @@ use std::io::{Cursor, Read, Seek, SeekFrom};
 
 use color_eyre::eyre::bail;
 use lz4_flex::decompress_into;
-use num_bigint::BigInt;
+use num_bigint::{BigInt, BigUint};
 
 use crate::cbor_decoder::CborDecoder;
 use crate::types::{Attribute, AttributeType, DataType, Event, FTR, Timescale, Transaction, TxGenerator, TxRelation, TxStream};
@@ -57,7 +57,6 @@ impl <'a> FtrParser<'a>{
 
     //TODO change to work with buffered readers
     //TODO further error handling
-    //TODO add missing data types to attribute values
     fn parse_input<R: Read + Seek>(&mut self, mut cbor_decoder: CborDecoder<R>) -> color_eyre::Result<()>{
         let tag = cbor_decoder.read_tag();
         if tag != 55799 {
@@ -302,8 +301,8 @@ impl <'a> FtrParser<'a>{
                         }
                         let tx_id = cbd.read_int() as usize;
                         let gen_id = cbd.read_int() as usize;
-                        let start_time = cbd.read_int();
-                        let end_time = cbd.read_int();
+                        let start_time = BigUint::from(cbd.read_int() as u64);
+                        let end_time = BigUint::from(cbd.read_int() as u64);
                         let new_event = Event{
                             tx_id,
                             gen_id,
@@ -317,7 +316,6 @@ impl <'a> FtrParser<'a>{
                         if len != 3 {
                             bail!("Begin Attribute has wrong size!");
                         }
-
                         let new_begin = self.parse_attribute(cbd, BEGIN_TAG);
                         attributes.push(new_begin);
                     }

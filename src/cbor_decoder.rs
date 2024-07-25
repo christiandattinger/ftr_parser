@@ -16,6 +16,7 @@ const TYPE_MAP: u8 = 0x5;
 const TYPE_TAG: u8 = 0x06;
 const TYPE_FLOAT_SIMPLE: u8 = 0x07;
 
+#[allow(dead_code)]
 const FALSE: u8 = 0x14;
 const TRUE: u8 = 0x15;
 const HALF_PRECISION_FLOAT: u8 = 0x19;
@@ -119,6 +120,7 @@ impl <R: Read + Seek>CborDecoder<R>{
         b == TRUE
     }
 
+    #[allow(dead_code)]
     pub fn read_double(&mut self) -> f64 {
         self.read_major_type_exact(TYPE_FLOAT_SIMPLE, DOUBLE_PRECISION_FLOAT);
 
@@ -131,6 +133,7 @@ impl <R: Read + Seek>CborDecoder<R>{
         f32::from_be_bytes((self.read_unsigned_int_32() as u32).to_be_bytes())
     }
 
+    #[allow(dead_code)]
     pub fn read_half_precision_float(&mut self) -> f16 {
         self.read_major_type_exact(TYPE_FLOAT_SIMPLE, HALF_PRECISION_FLOAT);
 

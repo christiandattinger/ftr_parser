@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::{Debug};
-use num_bigint::BigInt;
+use num_bigint::{BigInt, BigUint};
 use serde::{Deserialize, Serialize};
 use crate::types::DataType::Error;
 use crate::types::Timescale::{Fs, Ms, Ns, Ps, S, Us};
@@ -43,20 +43,38 @@ pub struct Transaction {
     pub out_relations: Vec<TxRelation>,
 }
 
+impl Transaction {
+    pub fn get_tx_id(&self) -> usize {
+        self.event.tx_id
+    }
+
+    pub fn get_gen_id(&self) -> usize {
+        self.event.gen_id
+    }
+
+    pub fn get_start_time(&self) -> BigUint {
+        self.event.start_time.clone()
+    }
+
+    pub fn get_end_time(&self) -> BigUint {
+        self.event.end_time.clone()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Event {
     pub tx_id: usize,
     pub gen_id: usize,
-    pub start_time: i64,
-    pub end_time: i64,
+    pub start_time: BigUint,
+    pub end_time: BigUint,
 }
 
 impl Event {
     pub fn new() -> Self{
         let tx_id = 0;
         let gen_id = 0;
-        let start_time = -1;
-        let end_time = -1;
+        let start_time = BigUint::default();
+        let end_time = BigUint::default();
         Self {
             tx_id,
             gen_id,

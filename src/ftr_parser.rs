@@ -143,6 +143,7 @@ impl <'a> FtrParser<'a>{
                     if self.ftr.file_name == "" {
                         let mut cbd = CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string()));
                         Self::parse_tx_block(self, &mut cbd)?;
+                        self.ftr.tx_streams.get_mut(&stream_id).unwrap().transactions_loaded = true;
                     } else {
                         cbor_decoder.skip_byte_string();  // we don't want to load the transactions right now, so we just skip this whole block
                     }
@@ -168,6 +169,7 @@ impl <'a> FtrParser<'a>{
                     if self.ftr.file_name == "" {
                         let mut cbd = CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string()));
                         Self::parse_tx_block(self, &mut cbd)?;
+                        self.ftr.tx_streams.get_mut(&stream_id).unwrap().transactions_loaded = true;
                     } else {
                         cbor_decoder.skip_byte_string();
                     }
@@ -250,7 +252,13 @@ impl <'a> FtrParser<'a>{
                 None => bail!("There is not entry in the Dictionary for id {kind_id}"),
             };
 
-            self.ftr.tx_streams.insert(stream_id, TxStream{id: stream_id, name: name.clone(), kind: kind.clone(), generators: vec![], tx_block_ids: vec![]});
+            self.ftr.tx_streams.insert(stream_id, TxStream{
+                id: stream_id,
+                name: name.clone(),
+                kind: kind.clone(),
+                generators: vec![],
+                transactions_loaded: false,
+                tx_block_ids: vec![]});
 
         } else if dir_tag == GENERATOR as i64{
             let len = cbd.read_array_length();
@@ -460,6 +468,7 @@ impl <'a> FtrParser<'a>{
                 Self::parse_tx_block(self, &mut CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string())))?;
             }
         }
+        self.ftr.tx_streams.get_mut(&stream_id).unwrap().transactions_loaded = true;
         Ok(())
     }
 

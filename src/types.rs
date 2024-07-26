@@ -15,6 +15,7 @@ pub struct TxStream {
     pub name: String,
     pub kind: String,
     pub generators: Vec<usize>,
+    pub transactions_loaded: bool,
     pub(super) tx_block_ids: Vec<(u64, IsCompressed)>,
 }
 

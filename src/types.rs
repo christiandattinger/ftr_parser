@@ -127,14 +127,32 @@ impl Attribute {
             data_type
         }
     }
+
+    pub fn value(&self) -> String {
+        match &self.data_type {
+            DataType::Boolean(b) => b.to_string(),
+            DataType::Enumeration(s) => s.clone(),
+            DataType::Integer(i) => i.to_string(),
+            DataType::Unsigned(u) => u.to_string(),
+            DataType::FloatingPointNumber(f) => f.to_string(),
+            DataType::BitVector(s) => s.clone(),
+            DataType::LogicVector(s) => s.clone(),
+            DataType::FixedPointInteger(f) => f.to_string(),
+            DataType::UnsignedFixedPointInteger(f) => f.to_string(),
+            DataType::Pointer(u) => u.to_string(),
+            DataType::String(s) => s.clone(),
+            DataType::Time(u) => u.to_string(),
+            Error => "".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DataType {
     Boolean(bool),
     Enumeration(String),
-    Integer(u64),
-    Unsigned(i64),
+    Integer(i64),
+    Unsigned(u64),
     FloatingPointNumber(f32),
     BitVector(String),
     LogicVector(String),

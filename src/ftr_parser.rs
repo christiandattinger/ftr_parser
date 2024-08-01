@@ -478,8 +478,8 @@ impl <'a> FtrParser<'a>{
         let data_type_with_value = match data_type as u8 {
             BOOLEAN => DataType::Boolean(cbd.read_boolean()),
             ENUMERATION => DataType::Enumeration(self.ftr.str_dict.get(&(cbd.read_int() as usize)).unwrap().clone()),
-            INTEGER => DataType::Integer(cbd.read_int() as u64),
-            UNSIGNED => DataType::Unsigned(cbd.read_int()),
+            INTEGER => DataType::Integer(cbd.read_int()),
+            UNSIGNED => DataType::Unsigned(cbd.read_int() as u64),
             FLOATING_POINT_NUMBER => DataType::FloatingPointNumber(cbd.read_float()),
             BIT_VECTOR => DataType::BitVector(self.ftr.str_dict.get(&(cbd.read_int() as usize)).unwrap().clone()),
             LOGIC_VECTOR => DataType::LogicVector(self.ftr.str_dict.get(&(cbd.read_int() as usize)).unwrap().clone()),

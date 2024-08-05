@@ -140,7 +140,7 @@ impl <'a> FtrParser<'a>{
 
                     self.ftr.tx_streams.get_mut(&stream_id).unwrap().tx_block_ids.push((cbor_decoder.input_stream.stream_position().expect(""), false));
 
-                    if self.ftr.file_name == "" {
+                    if self.ftr.path.is_none() {
                         let mut cbd = CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string()));
                         Self::parse_tx_block(self, &mut cbd)?;
                         self.ftr.tx_streams.get_mut(&stream_id).unwrap().transactions_loaded = true;
@@ -166,7 +166,7 @@ impl <'a> FtrParser<'a>{
                     self.ftr.tx_streams.get_mut(&stream_id).unwrap().tx_block_ids.push((cbor_decoder.input_stream.stream_position().expect(""), true));
                     let _uncomp_size = cbor_decoder.read_int();
 
-                    if self.ftr.file_name == "" {
+                    if self.ftr.path.is_none() {
                         let mut cbd = CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string()));
                         Self::parse_tx_block(self, &mut cbd)?;
                         self.ftr.tx_streams.get_mut(&stream_id).unwrap().transactions_loaded = true;
@@ -440,10 +440,10 @@ impl <'a> FtrParser<'a>{
 
     //loads the transactions of all generators of stream 'stream_id'
     pub(super) fn load_transactions(&mut self, stream_id: usize) -> color_eyre::Result<()>{
-        if self.ftr.file_name == "" {
+        if self.ftr.path.is_none() {
             bail!("Cannot load transaction when then input is not a file! \nTransactions should already be loaded.")
         }
-        let reader = File::open(&self.ftr.file_name).unwrap();
+        let reader = File::open(self.ftr.path.as_ref().unwrap()).unwrap();
 
         let tx_block_ids = self.ftr.tx_streams.get(&stream_id).unwrap().tx_block_ids.clone();
 

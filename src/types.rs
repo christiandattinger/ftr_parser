@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::types::DataType::Error;
 use crate::types::Timescale::{Fs, Ms, Ns, Ps, S, Us};
 use core::fmt;
+use std::path::PathBuf;
 use crate::ftr_parser::FtrParser;
 
 type IsCompressed = bool;
@@ -180,7 +181,7 @@ pub struct FTR {
     pub tx_streams: HashMap<usize, TxStream>,
     pub tx_generators: HashMap<usize, TxGenerator>,
     pub tx_relations: Vec<TxRelation>,
-    pub(crate) file_name: String,
+    pub(crate) path: Option<PathBuf>,
 }
 
 impl FTR {

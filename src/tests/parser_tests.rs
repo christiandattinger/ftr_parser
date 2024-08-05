@@ -1,13 +1,14 @@
 #[cfg(test)]
 mod test {
+    use std::path::PathBuf;
     use crate::parse::parse_ftr;
 
     #[test]
     fn uncomp_parsing() {
 
-        let file = String::from("my_db.ftr");
+        let path = PathBuf::from("./example_files/my_db.ftr");
 
-        let mut ftr = parse_ftr(file).unwrap();
+        let mut ftr = parse_ftr(path).unwrap();
 
         println!("Timescale: {:?}", ftr.time_scale);
         println!("Max timestamp: {:?}", ftr.max_timestamp);
@@ -24,7 +25,7 @@ mod test {
         }
         println!();
 
-        ftr.load_stream_into_memory(1);
+        //ftr.load_stream_into_memory(1);
         ftr.load_stream_into_memory(2);
         ftr.load_stream_into_memory(3);
 
@@ -32,13 +33,20 @@ mod test {
         for gen in &ftr.tx_generators {
             println!("{:?}", gen);
         }
+
+        println!();
+
+        println!("Streams: ");
+        for stream in &ftr.tx_streams {
+            println!("{:?}", stream);
+        }
     }
 
     #[test]
     fn comp_parsing() {
-        let file = String::from("my_db_c.ftr");
+        let path = PathBuf::from("example_files/my_db_c.ftr");
 
-        let mut ftr = parse_ftr(file).unwrap();
+        let mut ftr = parse_ftr(path).unwrap();
 
         println!("Timescale: {:?}", ftr.time_scale);
         println!("Max timestamp: {:?}", ftr.max_timestamp);

@@ -20,12 +20,25 @@ pub struct TxStream {
     pub(super) tx_block_ids: Vec<(u64, IsCompressed)>,
 }
 
+impl PartialEq<Self> for TxStream {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TxGenerator {
     pub id: usize,
     pub stream_id: usize,
     pub name: String,
     pub transactions: Vec<Transaction>,
+}
+
+impl PartialEq<Self> for TxGenerator {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id &&
+            self.stream_id == other.stream_id
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -37,12 +50,28 @@ pub struct TxRelation {
     pub sink_stream_id: usize
 }
 
+impl PartialEq<Self> for TxRelation {
+    fn eq(&self, other: &Self) -> bool {
+        self.source_tx_id == other.source_tx_id &&
+            self.sink_tx_id == other.sink_tx_id &&
+            self.source_stream_id == other.source_stream_id &&
+            self.sink_stream_id == other.sink_stream_id
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Transaction {
     pub event: Event,
     pub attributes: Vec<Attribute>,
     pub inc_relations: Vec<TxRelation>,
     pub out_relations: Vec<TxRelation>,
+}
+
+impl PartialEq<Self> for Transaction {
+    fn eq(&self, other: &Self) -> bool {
+        self.event.tx_id == other.event.tx_id &&
+            self.event.gen_id == other.event.gen_id
+    }
 }
 
 impl Transaction {

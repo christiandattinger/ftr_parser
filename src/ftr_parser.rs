@@ -88,7 +88,7 @@ impl <'a> FtrParser<'a>{
                 }
                 DICTIONARY_CHUNK_UNCOMP => {
                     let mut cbd: CborDecoder<Cursor<Vec<u8>>> = CborDecoder::new(Cursor::new(cbor_decoder.read_byte_string()?));
-                    Self::parse_dict(self, &mut cbd);
+                    Self::parse_dict(self, &mut cbd)?;
                 }
 
                 DICTIONARY_CHUNK_COMP => {
@@ -102,7 +102,7 @@ impl <'a> FtrParser<'a>{
                     let mut buf = vec![0u8; size as usize];
                     decompress_into(bytes.as_slice(), &mut buf)?;
 
-                    Self::parse_dict(self, &mut CborDecoder::new(Cursor::new(buf)));
+                    Self::parse_dict(self, &mut CborDecoder::new(Cursor::new(buf)))?;
                 }
 
                 DIRECTORY_CHUNK_UNCOMP => {

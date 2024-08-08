@@ -1,4 +1,4 @@
-use std::io::{Error, Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom};
 use color_eyre::eyre::bail;
 use color_eyre::Report;
 use half::f16;

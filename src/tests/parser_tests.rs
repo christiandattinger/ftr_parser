@@ -25,7 +25,7 @@ mod test {
         }
         println!();
 
-        //ftr.load_stream_into_memory(1);
+        ftr.load_stream_into_memory(1);
         ftr.load_stream_into_memory(2);
         ftr.load_stream_into_memory(3);
 

@@ -53,6 +53,9 @@ pub fn is_ftr<R: std::io::Read + std::io::Seek>(input: &mut R) -> bool {
     let mut cbor_decoder = CborDecoder::new(input);
     let tag = cbor_decoder.read_tag();
     cbor_decoder.input_stream.seek(SeekFrom::Start(0)).unwrap();
-    tag == 55799
+    match tag {
+        Ok(tag) => tag == 55799,
+        Err(_) => false,
+    }
 }
 

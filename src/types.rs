@@ -245,14 +245,18 @@ impl FTR {
     }
 
     /// Returns the `Optional<TxGenerator>` with the name `gen_name` from the stream with id `stream_id`.
-    pub fn get_generator_from_name(&self, stream_id: usize, gen_name: String) -> Option<&TxGenerator> {
-        self.tx_streams
-            .get(&stream_id)
-            .unwrap()
-            .generators
-            .iter()
-            .map(|id| self.tx_generators.get(id).unwrap())
-            .find(|gen| gen.name == gen_name)
+    pub fn get_generator_from_name(&self, stream_id: Option<usize>, gen_name: String) -> Option<&TxGenerator> {
+        if let Some(stream_id) = stream_id {
+            self.tx_streams
+                .get(&stream_id)
+                .unwrap()
+                .generators
+                .iter()
+                .map(|id| self.tx_generators.get(id).unwrap())
+                .find(|gen| gen.name == gen_name)
+        } else {
+            self.tx_generators.values().find(|gen| gen.name == gen_name)
+        }
     }
 }
 

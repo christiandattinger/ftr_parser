@@ -503,3 +503,18 @@ impl <'a> FtrParser<'a>{
         })
     }
 }
+
+// TODO please improve this
+pub(super) fn connect_relations_and_transactions(ftr: &mut FTR) {
+    for gen in ftr.tx_generators.values_mut() {
+        for tx in gen.transactions.iter_mut() {
+            for rel in &ftr.tx_relations {
+                if rel.source_tx_id == tx.event.tx_id {
+                    tx.out_relations.push(rel.clone());
+                } else if rel.sink_tx_id == tx.event.tx_id {
+                    tx.inc_relations.push(rel.clone());
+                }
+            }
+        }
+    }
+}

@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use num_bigint::BigInt;
 
 use crate::cbor_decoder::CborDecoder;
+use crate::ftr_parser;
 use crate::ftr_parser::FtrParser;
 use crate::types::{FTR, Timescale};
 
@@ -45,6 +46,7 @@ pub fn read_from_bytes(bytes: Vec<u8>) -> color_eyre::Result<FTR>{
     let mut ftr_parser = FtrParser::new(&mut ftr);
 
     ftr_parser.load(Cursor::new(bytes))?;
+    ftr_parser::connect_relations_and_transactions(&mut ftr);
 
     Ok(ftr)
 }
